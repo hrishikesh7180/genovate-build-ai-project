@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoreSnap — Visual Intelligence Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300;1,600&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080910;
+    --surface: #0d0f1a;
+    --surface2: #121424;
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(255,255,255,0.15);
+    --accent: #c9a96e;
+    --accent2: #7c6aee;
+    --accent3: #e8607a;
+    --text: #ede9e0;
+    --muted: #6b6a7a;
+    --muted2: #4a4960;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    text-align: center;
+    padding: 5rem 2rem 3.5rem;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  header::before {
+    content: '';
+    position: absolute;
+    top: -80px; left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse, rgba(124,106,238,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .header-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 5px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.1s ease forwards;
+  }
+
+  .header-title {
+    font-family: var(--font-display);
+    font-size: clamp(4rem, 10vw, 8rem);
+    font-weight: 300;
+    letter-spacing: -3px;
+    line-height: 0.9;
+    color: var(--text);
+    opacity: 0;
+    animation: fadeUp 0.8s 0.25s ease forwards;
+  }
+
+  .header-title em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .header-sub {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--muted);
+    font-weight: 300;
+    margin-top: 1.25rem;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.4s ease forwards;
+  }
+
+  .mode-pills {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.55s ease forwards;
+  }
+
+  .mode-pill-tag {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 4px 14px;
+    border-radius: 20px;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 2rem 6rem;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 2rem;
+    align-items: start;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    position: sticky;
+    top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 1px dashed rgba(201,169,110,0.3);
+    border-radius: 12px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(201,169,110,0.04) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .upload-zone:hover::before { opacity: 1; }
+  .upload-zone:hover { border-color: rgba(201,169,110,0.6); }
+
+  .upload-zone.has-img {
+    padding: 6px;
+    border-color: rgba(201,169,110,0.4);
+  }
+
+  .upload-zone.has-img img {
+    width: 100%;
+    border-radius: 8px;
+    display: block;
+    max-height: 260px;
+    object-fit: cover;
+  }
+
+  .upload-icon {
+    width: 48px; height: 48px;
+    border: 1px solid var(--border-bright);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.2rem;
+    color: var(--accent);
+    transition: transform 0.3s;
+  }
+
+  .upload-zone:hover .upload-icon { transform: scale(1.1); }
+
+  .upload-label-main {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--text);
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+
+  .upload-label-sub {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  input[type="file"] { display: none; }
+
+  /* ── SECTION LABELS ── */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+  }
+
+  /* ── MODE SELECTOR ── */
+  .modes-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mode-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+  }
+
+  .mode-item:hover {
+    border-color: var(--border-bright);
+    background: var(--surface2);
+  }
+
+  .mode-item.active {
+    border-color: rgba(201,169,110,0.4);
+    background: rgba(201,169,110,0.05);
+  }
+
+  .mode-glyph {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .mode-item.active .mode-glyph {
+    background: rgba(201,169,110,0.1);
+    border-color: rgba(201,169,110,0.35);
+    color: var(--accent);
+  }
+
+  .mode-info { flex: 1; min-width: 0; }
+
+  .mode-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .mode-desc {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mode-item.active .mode-name { color: var(--accent); }
+
+  /* ── ANALYZE BUTTON ── */
+  .analyze-btn {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid rgba(201,169,110,0.35);
+    background: rgba(201,169,110,0.08);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .analyze-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(201,169,110,0.12), rgba(124,106,238,0.08));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .analyze-btn:hover:not(:disabled)::before { opacity: 1; }
+  .analyze-btn:hover:not(:disabled) {
+    border-color: rgba(201,169,110,0.7);
+    transform: translateY(-1px);
+  }
+
+  .analyze-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    border-color: var(--border);
+    color: var(--muted);
+    background: transparent;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel { min-height: 500px; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    gap: 1rem;
+  }
+
+  .empty-glyph {
+    font-family: var(--font-display);
+    font-size: 4rem;
+    font-weight: 300;
+    color: var(--muted2);
+    font-style: italic;
+  }
+
+  .empty-text {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: var(--muted2);
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 2;
+  }
+
+  /* ── LOADING STATE ── */
+  .loading-state {
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  .loading-ring {
+    width: 48px; height: 48px;
+    border: 1px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  /* ── RESULT CARDS ── */
+  .results { display: flex; flex-direction: column; gap: 1rem; }
+
+  .rcard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.5s ease forwards;
+    opacity: 0;
+  }
+
+  .rcard::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,169,110,0.3), transparent);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .rcard:nth-child(1) { animation-delay: 0.05s; }
+  .rcard:nth-child(2) { animation-delay: 0.1s; }
+  .rcard:nth-child(3) { animation-delay: 0.15s; }
+  .rcard:nth-child(4) { animation-delay: 0.2s; }
+  .rcard:nth-child(5) { animation-delay: 0.25s; }
+  .rcard:nth-child(6) { animation-delay: 0.3s; }
+  .rcard:nth-child(7) { animation-delay: 0.35s; }
+
+  .rbadge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(201,169,110,0.25);
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+  }
+
+  .rtitle {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+
+  .rtitle em { font-style: italic; color: var(--accent); }
+
+  .rbody {
+    font-size: 0.88rem;
+    color: #9a9ab0;
+    line-height: 1.8;
+    font-weight: 300;
+  }
+
+  /* ── TWO COLS ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  /* ── CHAR CARD ── */
+  .char-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+
+  .char-name {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-style: italic;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .char-role {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .char-desc { font-size: 0.8rem; color: #9a9ab0; line-height: 1.6; }
+
+  /* ── STEPS ── */
+  .step-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .step-num {
+    width: 26px; height: 26px;
+    min-width: 26px;
+    border: 1px solid var(--border-bright);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--accent);
+    margin-top: 1px;
+  }
+
+  .step-text { font-size: 0.83rem; color: #9a9ab0; line-height: 1.6; }
+
+  /* ── FLASHCARD ── */
+  .fc-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+
+  .fc-q {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--accent2);
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  .fc-a { font-size: 0.83rem; color: var(--text); line-height: 1.5; }
+
+  /* ── PILLS ── */
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── MEME BOX ── */
+  .meme-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  .meme-top {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    line-height: 1.2;
+  }
+
+  .meme-divider {
+    width: 40px;
+    height: 1px;
+    background: var(--border-bright);
+    margin: 1rem auto;
+  }
+
+  .meme-bottom {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    line-height: 1.2;
+    font-style: italic;
+  }
+
+  /* ── INSIGHT BOX ── */
+  .insight-box {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    border-left: 2px solid var(--accent);
+  }
+
+  .insight-label {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .insight-text { font-size: 0.83rem; color: #9a9ab0; line-height: 1.6; }
+
+  .danger-box {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    border-left: 2px solid var(--accent3);
+  }
+
+  .danger-label {
+    font-family: var(--font-mono);
+    font-size: 0.58px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent3);
+    margin-bottom: 6px;
+    font-size: 0.58rem;
+  }
+
+  .danger-text { font-size: 0.83rem; color: #9a9ab0; line-height: 1.6; }
+
+  /* ── ERROR BOX ── */
+  .error-box {
+    background: rgba(232,96,122,0.06);
+    border: 1px solid rgba(232,96,122,0.2);
+    border-radius: 10px;
+    padding: 1.25rem;
+    font-size: 0.85rem;
+    color: #e8607a;
+    font-family: var(--font-mono);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 3rem 2rem;
+    border-top: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+  }
+
+  .footer-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .footer-sub {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    color: var(--muted2);
+    text-transform: uppercase;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--muted2); border-radius: 4px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .left-panel { position: static; }
+    .two-col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow">✦ Visual Intelligence Engine ✦</div>
+  <h1 class="header-title">Lore<em>Snap</em></h1>
+  <p class="header-sub">Upload any image. Receive stories, memes, study material &amp; diagram intelligence.</p>
+  <div class="mode-pills">
+    <span class="mode-pill-tag">Story Universe</span>
+    <span class="mode-pill-tag">Meme Engine</span>
+    <span class="mode-pill-tag">Study Mode</span>
+    <span class="mode-pill-tag">Diagram AI</span>
+    <span class="mode-pill-tag">Full Lore</span>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">↑</div>
+        <div class="upload-label-main">Drop your image here</div>
+        <div class="upload-label-sub" style="margin-top:4px">JPG · PNG · GIF · WEBP</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/gif,image/webp">
+    </div>
+
+    <div>
+      <div class="section-label">Choose analysis mode</div>
+      <div class="modes-grid" id="modesGrid"></div>
+    </div>
+
+    <button class="analyze-btn" id="analyzeBtn" disabled onclick="analyze()">
+      ✦ &nbsp;Analyze Image
+    </button>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel" id="rightPanel">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-glyph">Lore</div>
+      <div class="empty-text">Upload an image to begin<br>your intelligence journey</div>
+    </div>
+    <div id="loadingState" style="display:none" class="loading-state">
+      <div class="loading-ring"></div>
+      <div class="loading-text" id="loadingText">Initializing analysis...</div>
+    </div>
+    <div id="resultsContainer" style="display:none" class="results"></div>
+    <div id="errorBox" style="display:none" class="error-box"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-title">LoreSnap</div>
+  <div class="footer-sub">StudySnap · Meme Generator · Story Generator · Diagram Explainer — Unified</div>
+</footer>
+
+<script>
+const MODES = [
+  { id:'universe', glyph:'✦', name:'LoreSnap — Full Universe', desc:'All 4 engines combined' },
+  { id:'story',    glyph:'◈', name:'Story Mode',               desc:'Characters, world & plot twist' },
+  { id:'meme',     glyph:'◉', name:'Meme Mode',                desc:'Captions, roast & hashtags' },
+  { id:'study',    glyph:'◆', name:'Study Mode',               desc:'Flashcards, exams & tips' },
+  { id:'diagram',  glyph:'◎', name:'Diagram Mode',             desc:'Components & step-by-step' },
+];
+
+let selectedMode = 'universe';
+let imageB64 = null;
+let imageType = null;
+
+// build mode buttons
+const grid = document.getElementById('modesGrid');
+MODES.forEach(m => {
+  const el = document.createElement('div');
+  el.className = 'mode-item' + (m.id === selectedMode ? ' active' : '');
+  el.innerHTML = `<div class="mode-glyph">${m.glyph}</div><div class="mode-info"><div class="mode-name">${m.name}</div><div class="mode-desc">${m.desc}</div></div>`;
+  el.onclick = () => {
+    selectedMode = m.id;
+    document.querySelectorAll('.mode-item').forEach((b,i) => b.classList.toggle('active', MODES[i].id === selectedMode));
+  };
+  grid.appendChild(el);
+});
+
+// file upload
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  imageType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imageB64 = ev.target.result.split(',')[1];
+    const zone = document.getElementById('uploadZone');
+    zone.className = 'upload-zone has-img';
+    zone.innerHTML = `<img src="${ev.target.result}" alt="uploaded image">`;
+    document.getElementById('analyzeBtn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+});
+
+function buildPrompt(mode) {
+  const base = 'Analyze this image carefully. Respond ONLY with a valid JSON object — no markdown, no preamble, no code fences.\n\n';
+  const p = {
+    universe: base + `Return this exact structure:
+{"universe_name":"a dramatic name for the world depicted","lore_summary":"3-4 sentence epic narrative framing this as story lore","characters":[{"name":"...","role":"...","description":"..."},{"name":"...","role":"...","description":"..."},{"name":"...","role":"...","description":"..."}],"diagram_breakdown":{"title":"what this is about","steps":["step1","step2","step3","step4"]},"meme":{"top":"meme top text","bottom":"punchline"},"flashcards":[{"q":"...","a":"..."},{"q":"...","a":"..."},{"q":"...","a":"..."}],"key_concepts":["c1","c2","c3","c4","c5"],"story_opening":"first 2-3 sentences of a story","exam_question":"one insightful exam question","plot_twist":"shocking but educational plot twist"}`,
+    story: base + `Return:
+{"genre":"genre name","opening":"first 2-3 sentences of a compelling story","characters":[{"name":"...","role":"...","description":"..."},{"name":"...","role":"...","description":"..."},{"name":"...","role":"...","description":"..."}],"world":"2-3 sentence world description","conflict":"the central conflict","plot_twist":"a shocking plot twist","cliffhanger":"a cliffhanger ending sentence"}`,
+    meme: base + `Return:
+{"main_meme":{"top":"top text","bottom":"punchline"},"alt_memes":[{"top":"...","bottom":"..."},{"top":"...","bottom":"..."},{"top":"...","bottom":"..."},{"top":"...","bottom":"..."}],"roast":"a short witty roast of the image subject","social_caption":"an instagram caption","hashtags":["#tag1","#tag2","#tag3","#tag4","#tag5"]}`,
+    study: base + `Return:
+{"topic":"main topic name","difficulty":"Easy or Medium or Hard","summary":"2-3 sentence summary","flashcards":[{"q":"...","a":"..."},{"q":"...","a":"..."},{"q":"...","a":"..."},{"q":"...","a":"..."}],"diagram_steps":["step1","step2","step3"],"exam_questions":["q1","q2","q3"],"key_concepts":["c1","c2","c3","c4"],"study_tip":"one actionable study tip"}`,
+    diagram: base + `Return:
+{"diagram_type":"type of diagram or visual","title":"title","overview":"2-3 sentence overview","components":[{"name":"...","description":"..."},{"name":"...","description":"..."},{"name":"...","description":"..."}],"step_by_step":["step1","step2","step3","step4"],"key_insight":"the most important insight","common_misconception":"a common misunderstanding","real_world_example":"a real-world application example"}`
+  };
+  return p[mode];
+}
+
+const LOADING_MSGS = [
+  'Analyzing image composition...',
+  'Extracting visual intelligence...',
+  'Crafting the lore...',
+  'Summoning insights...',
+  'Weaving the narrative...',
+  'Almost there...',
+];
+
+async function analyze() {
+  if (!imageB64) return;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsContainer').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'flex';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  let mi = 0;
+  document.getElementById('loadingText').textContent = LOADING_MSGS[0];
+  const loadInt = setInterval(() => {
+    mi = (mi + 1) % LOADING_MSGS.length;
+    document.getElementById('loadingText').textContent = LOADING_MSGS[mi];
+  }, 1800);
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: imageType, data: imageB64 } },
+            { type: 'text', text: buildPrompt(selectedMode) }
+          ]
+        }]
+      })
+    });
+    const result = await resp.json();
+    if (!resp.ok) throw new Error(result.error?.message || 'API error ' + resp.status);
+    let raw = result.content.map(c => c.text || '').join('');
+    raw = raw.replace(/```json|```/g, '').trim();
+    const data = JSON.parse(raw);
+    renderResults(data, selectedMode);
+  } catch(err) {
+    clearInterval(loadInt);
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorBox').style.display = 'block';
+    document.getElementById('errorBox').textContent = '⚠ ' + err.message;
+  } finally {
+    clearInterval(loadInt);
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function card(badgeText, inner) {
+  return `<div class="rcard"><span class="rbadge">${badgeText}</span>${inner}</div>`;
+}
+
+function chars(list) {
+  return (list||[]).map(c => `<div class="char-item"><div class="char-name">${c.name}</div><div class="char-role">${c.role}</div><div class="char-desc">${c.description}</div></div>`).join('');
+}
+
+function steps(list) {
+  return (list||[]).map((s,i) => `<div class="step-item"><div class="step-num">${i+1}</div><div class="step-text">${s}</div></div>`).join('');
+}
+
+function flashcards(list) {
+  return (list||[]).map(f => `<div class="fc-item"><div class="fc-q">Q — ${f.q}</div><div class="fc-a">${f.a}</div></div>`).join('');
+}
+
+function pills(list) {
+  return `<div class="pills">${(list||[]).map(c=>`<span class="pill">${c}</span>`).join('')}</div>`;
+}
+
+function memeBox(m) {
+  return `<div class="meme-box"><div class="meme-top">${m.top}</div><div class="meme-divider"></div><div class="meme-bottom">${m.bottom}</div></div>`;
+}
+
+function renderResults(data, mode) {
+  document.getElementById('loadingState').style.display = 'none';
+  const c = document.getElementById('resultsContainer');
+  c.style.display = 'flex';
+  let html = '';
+
+  if (mode === 'universe' && data.universe_name) {
+    html += card('Universe', `<div class="rtitle"><em>${data.universe_name}</em></div><div class="rbody">${data.lore_summary}</div>`);
+    if (data.characters?.length) html += card('Characters', chars(data.characters));
+    const db = data.diagram_breakdown;
+    if (db) {
+      html += `<div class="two-col">`;
+      html += card('Diagram breakdown', `<div class="rbody" style="margin-bottom:12px">${db.title}</div>${steps(db.steps)}`);
+      if (data.meme) html += card('Meme', memeBox(data.meme));
+      html += `</div>`;
+    }
+    if (data.flashcards?.length) html += card('Flashcards', flashcards(data.flashcards));
+    if (data.key_concepts?.length) html += card('Key concepts', pills(data.key_concepts));
+    if (data.plot_twist) html += card('Plot twist', `<div class="insight-box"><div class="insight-label">Revelation</div><div class="insight-text">${data.plot_twist}</div></div>`);
+    if (data.exam_question) html += card('Exam question', `<div class="rbody">${data.exam_question}</div>`);
+
+  } else if (mode === 'story' && data.opening) {
+    html += card(data.genre || 'Story', `<div class="rbody" style="font-size:1rem;font-style:italic;font-family:var(--font-display);color:var(--text)">${data.opening}</div>`);
+    if (data.characters?.length) html += card('Characters', chars(data.characters));
+    html += `<div class="two-col">` +
+      card('World', `<div class="rbody">${data.world||''}</div>`) +
+      card('Conflict', `<div class="rbody">${data.conflict||''}</div>`) +
+      `</div>`;
+    if (data.plot_twist) html += card('Plot twist', `<div class="insight-box"><div class="insight-label">Revelation</div><div class="insight-text">${data.plot_twist}</div></div>`);
+    if (data.cliffhanger) html += card('Cliffhanger', `<div class="rbody" style="font-style:italic;font-family:var(--font-display);font-size:1rem">"${data.cliffhanger}"</div>`);
+
+  } else if (mode === 'meme' && data.main_meme) {
+    html += card('Main meme', memeBox(data.main_meme));
+    if (data.alt_memes?.length) {
+      const alts = data.alt_memes.slice(0,4).map(m => `<div class="meme-box" style="padding:1rem"><div class="meme-top" style="font-size:1rem">${m.top}</div><div class="meme-divider"></div><div class="meme-bottom" style="font-size:1rem">${m.bottom}</div></div>`).join('');
+      html += card('More memes', `<div class="two-col">${alts}</div>`);
+    }
+    if (data.roast) html += card('Roast', `<div class="rbody">${data.roast}</div>`);
+    if (data.social_caption) html += card('Caption', `<div class="rbody" style="font-style:italic">${data.social_caption}</div>`);
+    if (data.hashtags?.length) html += card('Hashtags', pills(data.hashtags));
+
+  } else if (mode === 'study' && data.flashcards) {
+    html += card(data.topic || 'Study', `<div class="rbody">${data.summary||''}</div>`);
+    html += card('Flashcards', flashcards(data.flashcards));
+    html += `<div class="two-col">` +
+      card('Exam questions', (data.exam_questions||[]).map((q,i)=>`<div class="rbody" style="margin-bottom:8px"><span style="color:var(--accent);font-family:var(--font-mono);font-size:0.7rem">${i+1}.</span> ${q}</div>`).join('')) +
+      card('Visual steps', steps(data.diagram_steps)) +
+      `</div>`;
+    if (data.key_concepts?.length) html += card('Key concepts', pills(data.key_concepts));
+    if (data.study_tip) html += card('Study tip', `<div class="insight-box"><div class="insight-label">Tip</div><div class="insight-text">${data.study_tip}</div></div>`);
+
+  } else if (mode === 'diagram' && data.diagram_type) {
+    html += card(data.diagram_type, `<div class="rtitle">${data.title||''}</div><div class="rbody">${data.overview||''}</div>`);
+    html += `<div class="two-col">` +
+      card('Components', (data.components||[]).map(comp=>`<div class="char-item" style="border-left-color:var(--accent)"><div class="char-name" style="font-size:1rem">${comp.name}</div><div class="char-desc">${comp.description}</div></div>`).join('')) +
+      card('Step by step', steps(data.step_by_step)) +
+      `</div>`;
+    html += `<div class="two-col">` +
+      `<div class="rcard"><span class="rbadge">Key insight</span><div class="insight-box"><div class="insight-label">Insight</div><div class="insight-text">${data.key_insight||''}</div></div></div>` +
+      `<div class="rcard"><span class="rbadge">Common misconception</span><div class="danger-box"><div class="danger-label">Warning</div><div class="danger-text">${data.common_misconception||''}</div></div></div>` +
+      `</div>`;
+    if (data.real_world_example) html += card('Real-world example', `<div class="rbody">${data.real_world_example}</div>`);
+  } else {
+    html = `<div class="error-box">Could not parse the AI response. Please try again.</div>`;
+  }
+
+  c.innerHTML = html;
+}
+</script>
+</body>
+</html>
